@@ -32,8 +32,16 @@ defmodule Advent.Day02 do
   def part_2(input) do
     input
     |> parse()
+    |> Enum.map(fn {_id, game} -> game end)
+    |> Enum.map(&power/1)
+    |> Enum.sum()
+  end
 
-    0
+  defp power(game) do
+    game
+    |> Enum.reduce(%{}, &Map.merge(&1, &2, fn _k, v1, v2 -> max(v1, v2) end))
+    |> Map.values()
+    |> Enum.reduce(1, &(&1 * &2))
   end
 
   defp parse(input) do
