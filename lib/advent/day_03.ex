@@ -10,38 +10,45 @@ defmodule Advent.Day03 do
   def part_1(input) do
     input
     |> parse()
-    |> find_part_numbers()
+    |> find_numbers_with_parts()
+    |> Enum.reject(fn {_number, parts} -> parts == [] end)
+    |> Enum.map(fn {number, _parts} -> number end)
     |> Enum.sum()
   end
 
-  defp find_part_numbers(map) do
+  @doc """
+  Part 2
+  """
+  @spec part_2(String.t()) :: integer
+  def part_2(input) do
+    input
+    |> parse()
+  end
+
+  defp find_numbers_with_parts(map) do
     max_x = map |> Map.keys() |> Enum.map(fn {x, _} -> x end) |> Enum.max()
     max_y = map |> Map.keys() |> Enum.map(fn {_, y} -> y end) |> Enum.max()
 
-    find_part_numbers(map, {0, 0}, {max_x, max_y}, [])
+    find_numbers_with_parts(map, {0, 0}, {max_x, max_y}, [])
   end
 
-  defp find_part_numbers(_map, {_x, y}, {_max_x, max_y}, part_numbers) when y > max_y do
-    part_numbers
+  defp find_numbers_with_parts(_map, {_x, y}, {_max_x, max_y}, numbers) when y > max_y do
+    numbers
   end
 
-  defp find_part_numbers(map, {x, y}, {max_x, max_y}, part_numbers) when x > max_x do
-    find_part_numbers(map, {0, y + 1}, {max_x, max_y}, part_numbers)
+  defp find_numbers_with_parts(map, {x, y}, {max_x, max_y}, numbers) when x > max_x do
+    find_numbers_with_parts(map, {0, y + 1}, {max_x, max_y}, numbers)
   end
 
-  defp find_part_numbers(map, {x, y} = pos, max, part_numbers) do
+  defp find_numbers_with_parts(map, {x, y} = pos, max, numbers) do
     case Map.fetch(map, pos) do
       {:ok, {:digit, digit}} ->
         {next_pos, number} = read_number(map, {x + 1, y}, digit)
-
-        if number_adjacent_to_symbol?(map, {x - 1, y}, next_pos) do
-          find_part_numbers(map, next_pos, max, [number | part_numbers])
-        else
-          find_part_numbers(map, next_pos, max, part_numbers)
-        end
+        parts = find_adjacent_parts(map, {x - 1, y}, next_pos)
+        find_numbers_with_parts(map, next_pos, max, [{number, parts} | numbers])
 
       {:ok, _other} ->
-        find_part_numbers(map, {x + 1, y}, max, part_numbers)
+        find_numbers_with_parts(map, {x + 1, y}, max, numbers)
     end
   end
 
@@ -55,7 +62,7 @@ defmodule Advent.Day03 do
     end
   end
 
-  defp number_adjacent_to_symbol?(map, {min_x, y}, {max_x, y}) do
+  defp find_adjacent_parts(map, {min_x, y}, {max_x, y}) do
     [
       {min_x, y},
       {max_x, y},
@@ -63,21 +70,12 @@ defmodule Advent.Day03 do
       Enum.map(min_x..max_x, &{&1, y + 1})
     ]
     |> List.flatten()
-    |> Enum.any?(fn pos ->
+    |> Enum.flat_map(fn pos ->
       case Map.fetch(map, pos) do
-        {:ok, {:symbol, _}} -> true
-        _other -> false
+        {:ok, {:symbol, symbol}} -> [{pos, symbol}]
+        _other -> []
       end
     end)
-  end
-
-  @doc """
-  Part 2
-  """
-  @spec part_2(String.t()) :: integer
-  def part_2(input) do
-    input
-    |> parse()
   end
 
   @digits "0123456789" |> String.graphemes()
