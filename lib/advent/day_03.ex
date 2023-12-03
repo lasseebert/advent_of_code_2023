@@ -23,6 +23,20 @@ defmodule Advent.Day03 do
   def part_2(input) do
     input
     |> parse()
+    |> find_numbers_with_parts()
+    |> Enum.reduce(%{}, fn {number, parts}, parts_map ->
+      Enum.reduce(parts, parts_map, fn
+        {pos, "*"}, parts_map ->
+          Map.update(parts_map, pos, [number], &[number | &1])
+
+        _, parts_map ->
+          parts_map
+      end)
+    end)
+    |> Map.values()
+    |> Enum.filter(&match?([_, _], &1))
+    |> Enum.map(fn [num_1, num_2] -> num_1 * num_2 end)
+    |> Enum.sum()
   end
 
   defp find_numbers_with_parts(map) do
