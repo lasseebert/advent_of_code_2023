@@ -33,8 +33,33 @@ defmodule Advent.Day04 do
   def part_2(input) do
     input
     |> parse()
+    |> Enum.with_index()
+    |> Enum.into(%{}, fn {card, index} -> {index, {1, card}} end)
+    |> count_cards(0, 0)
+  end
 
-    0
+  defp count_cards(cards_map, index, total_count) do
+    case Map.fetch(cards_map, index) do
+      {:ok, {count, card}} ->
+        wins = Enum.count(card.numbers, &MapSet.member?(card.winners, &1))
+        cards_map = add_cards(cards_map, index + 1, wins, count)
+        count_cards(cards_map, index + 1, total_count + count)
+
+      :error ->
+        total_count
+    end
+  end
+
+  defp add_cards(cards_map, _start_index, 0, _amount), do: cards_map
+
+  defp add_cards(cards_map, start_index, length, amount) do
+    Enum.reduce(start_index..(start_index + length - 1), cards_map, fn index, acc ->
+      if Map.has_key?(acc, index) do
+        Map.update!(acc, index, fn {count, card} -> {count + amount, card} end)
+      else
+        acc
+      end
+    end)
   end
 
   defp parse(input) do
