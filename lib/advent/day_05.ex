@@ -33,10 +33,82 @@ defmodule Advent.Day05 do
   """
   @spec part_2(String.t()) :: integer
   def part_2(input) do
-    input
-    |> parse()
+    {seeds, maps} = input |> parse()
 
-    0
+    seeds
+    |> Enum.chunk_every(2)
+    |> Enum.map(fn [start, length] -> start..(start + length - 1) end)
+    |> Enum.flat_map(fn range -> run_range_maps(range, maps) end)
+    |> Enum.min()
+    |> then(& &1.first)
+  end
+
+  defp run_range_maps(range, []), do: [range]
+
+  defp run_range_maps(range, [map | maps]) do
+    range
+    |> range_lookup(map)
+    |> Enum.flat_map(fn range -> run_range_maps(range, maps) end)
+  end
+
+  defp range_lookup(range, []), do: [range]
+
+  defp range_lookup(source_range, [{map_range, shift} = table | tables]) do
+    case split_range(source_range, map_range) do
+      [source_range] ->
+        if source_range.first in map_range do
+          [Range.shift(source_range, shift)]
+        else
+          range_lookup(source_range, tables)
+        end
+
+      source_ranges ->
+        Enum.flat_map(source_ranges, fn range -> range_lookup(range, [table | tables]) end)
+    end
+  end
+
+  defp split_range(r1, r2) do
+    cond do
+      # <--->
+      #       <--->
+      r1.last < r2.first ->
+        [r1]
+
+      #       <--->
+      # <--->
+      r1.first > r2.last ->
+        [r1]
+
+      #   <--->
+      # <------->
+      r1.first >= r2.first and r1.last <= r2.last ->
+        [r1]
+
+      # <---->
+      #   <----->
+      r1.first < r2.first and r1.last <= r2.last ->
+        [
+          r1.first..(r2.first - 1),
+          r2.first..r1.last
+        ]
+
+      # <------->
+      #   <--->
+      r1.first < r2.first and r1.last > r2.last ->
+        [
+          r1.first..(r2.first - 1),
+          r2,
+          (r2.last + 1)..r1.last
+        ]
+
+      #   <----->
+      # <---->
+      true ->
+        [
+          r1.first..r2.last,
+          (r2.last + 1)..r1.last
+        ]
+    end
   end
 
   defp parse(input) do
