@@ -14,6 +14,23 @@ defmodule Advent.Day06 do
     |> Enum.reduce(1, &Kernel.*/2)
   end
 
+  @doc """
+  Part 2
+  """
+  @spec part_2(String.t()) :: integer
+  def part_2(input) do
+    input
+    |> parse()
+    |> Enum.unzip()
+    |> Tuple.to_list()
+    |> Enum.map(fn numbers ->
+      numbers
+      |> Enum.map_join(&Integer.to_string/1)
+      |> String.to_integer()
+    end)
+    |> then(fn [time, record] -> num_ways_to_win(time, record) end)
+  end
+
   defp num_ways_to_win(time, record) do
     # We want to find the number of ways to beat the record
 
@@ -59,26 +76,16 @@ defmodule Advent.Day06 do
     end
   end
 
-  @doc """
-  Part 2
-  """
-  @spec part_2(String.t()) :: integer
-  def part_2(input) do
-    input
-    |> parse()
-
-    0
-  end
-
   defp parse(input) do
     input
     |> String.trim()
     |> String.split("\n", trim: true)
     |> Enum.map(fn line ->
-        [_, numbers] = String.split(line, ":", trim: true)
-        numbers
-        |> String.split(" ", trim: true)
-        |> Enum.map(&String.to_integer/1)
+      [_, numbers] = String.split(line, ":", trim: true)
+
+      numbers
+      |> String.split(" ", trim: true)
+      |> Enum.map(&String.to_integer/1)
     end)
     |> Enum.zip()
   end
