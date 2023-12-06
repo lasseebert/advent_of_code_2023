@@ -20,15 +20,9 @@ defmodule Advent.Day06 do
   @spec part_2(String.t()) :: integer
   def part_2(input) do
     input
+    |> String.replace(" ", "")
     |> parse()
-    |> Enum.unzip()
-    |> Tuple.to_list()
-    |> Enum.map(fn numbers ->
-      numbers
-      |> Enum.map_join(&Integer.to_string/1)
-      |> String.to_integer()
-    end)
-    |> then(fn [time, record] -> num_ways_to_win(time, record) end)
+    |> then(fn [{time, record}] -> num_ways_to_win(time, record) end)
   end
 
   defp num_ways_to_win(time, record) do
