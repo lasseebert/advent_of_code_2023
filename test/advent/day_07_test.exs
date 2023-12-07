@@ -25,15 +25,13 @@ defmodule Advent.Day07Test do
   end
 
   describe "part 2" do
-    @tag :skip
     test "example" do
-      assert Day07.part_2(@example_input) == :foo
+      assert Day07.part_2(@example_input) == 5905
     end
 
-    @tag :skip
     @tag :puzzle_input
     test "puzzle input" do
-      assert Day07.part_2(@puzzle_input) == :foo
+      assert Day07.part_2(@puzzle_input) == 246_285_222
     end
   end
 end
