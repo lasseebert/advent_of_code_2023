@@ -23,6 +23,19 @@ defmodule Advent.Day08Test do
   ZZZ = (ZZZ, ZZZ)
   """
 
+  @example_input_3 """
+  LR
+
+  11A = (11B, XXX)
+  11B = (XXX, 11Z)
+  11Z = (11B, XXX)
+  22A = (22B, XXX)
+  22B = (22C, 22C)
+  22C = (22Z, 22Z)
+  22Z = (22B, 22B)
+  XXX = (XXX, XXX)
+  """
+
   @puzzle_input File.read!("puzzle_inputs/day_08.txt")
 
   describe "part 1" do
@@ -41,15 +54,13 @@ defmodule Advent.Day08Test do
   end
 
   describe "part 2" do
-    @tag :skip
     test "example" do
-      assert Day08.part_2(@example_input_1) == :foo
+      assert Day08.part_2(@example_input_3) == 6
     end
 
-    @tag :skip
     @tag :puzzle_input
     test "puzzle input" do
-      assert Day08.part_2(@puzzle_input) == :foo
+      assert Day08.part_2(@puzzle_input) == 12_833_235_391_111
     end
   end
 end
