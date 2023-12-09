@@ -35,8 +35,22 @@ defmodule Advent.Day09 do
   def part_2(input) do
     input
     |> parse()
+    |> Enum.map(&find_previous_number/1)
+    |> Enum.sum()
+  end
 
-    0
+  defp find_previous_number(sequence) do
+    if Enum.all?(sequence, &(&1 == 0)) do
+      0
+    else
+      next_sequence =
+        sequence
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [a, b] -> b - a end)
+
+      previous = find_previous_number(next_sequence)
+      hd(sequence) - previous
+    end
   end
 
   defp parse(input) do
