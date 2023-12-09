@@ -10,6 +10,22 @@ defmodule Advent.Day09 do
   def part_1(input) do
     input
     |> parse()
+    |> sum_next_numbers()
+  end
+
+  @doc """
+  Part 2
+  """
+  @spec part_2(String.t()) :: integer
+  def part_2(input) do
+    input
+    |> parse()
+    |> Enum.map(&Enum.reverse/1)
+    |> sum_next_numbers()
+  end
+
+  defp sum_next_numbers(sequences) do
+    sequences
     |> Enum.map(&find_next_number/1)
     |> Enum.sum()
   end
@@ -28,30 +44,6 @@ defmodule Advent.Day09 do
     end
   end
 
-  @doc """
-  Part 2
-  """
-  @spec part_2(String.t()) :: integer
-  def part_2(input) do
-    input
-    |> parse()
-    |> Enum.map(&find_previous_number/1)
-    |> Enum.sum()
-  end
-
-  defp find_previous_number(sequence) do
-    if Enum.all?(sequence, &(&1 == 0)) do
-      0
-    else
-      next_sequence =
-        sequence
-        |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.map(fn [a, b] -> b - a end)
-
-      previous = find_previous_number(next_sequence)
-      hd(sequence) - previous
-    end
-  end
 
   defp parse(input) do
     input
