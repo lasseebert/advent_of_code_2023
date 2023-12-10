@@ -44,7 +44,6 @@ defmodule Advent.Day09 do
     end
   end
 
-
   defp parse(input) do
     input
     |> String.trim()
