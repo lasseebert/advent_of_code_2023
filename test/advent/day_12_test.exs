@@ -12,11 +12,19 @@ defmodule Advent.Day12Test do
   ?###???????? 3,2,1
   """
 
+  @small_example_input """
+  ?###???????? 3,2,1
+  """
+
   @puzzle_input File.read!("puzzle_inputs/day_12.txt")
 
   describe "part 1" do
     test "example" do
       assert Day12.part_1(@example_input) == 21
+    end
+
+    test "mini example" do
+      assert Day12.part_1(@small_example_input) == 10
     end
 
     @tag :puzzle_input
@@ -26,15 +34,17 @@ defmodule Advent.Day12Test do
   end
 
   describe "part 2" do
-    @tag :skip
     test "example" do
-      assert Day12.part_2(@example_input) == :foo
+      assert Day12.part_2(@example_input) == 525_152
     end
 
-    @tag :skip
+    test "mini example" do
+      assert Day12.part_2(@small_example_input) == 506_250
+    end
+
     @tag :puzzle_input
     test "puzzle input" do
-      assert Day12.part_2(@puzzle_input) == :foo
+      assert Day12.part_2(@puzzle_input) == 60_681_419_004_564
     end
   end
 end
