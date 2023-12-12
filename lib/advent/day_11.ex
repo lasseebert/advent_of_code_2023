@@ -8,20 +8,32 @@ defmodule Advent.Day11 do
   """
   @spec part_1(String.t()) :: integer
   def part_1(input) do
+    solve(input, 2)
+  end
+
+  @doc """
+  Part 2
+  """
+  @spec part_2(String.t(), integer) :: integer
+  def part_2(input, size) do
+    solve(input, size)
+  end
+
+  def solve(input, size) do
     map = input |> parse()
 
     empty_columns = find_empty_columns(map)
     empty_rows = find_empty_rows(map)
 
     for(a <- map, b <- map, a < b, do: {a, b})
-    |> Enum.map(fn {a, b} -> distance(a, b, empty_columns, empty_rows) end)
+    |> Enum.map(fn {a, b} -> distance(a, b, empty_columns, empty_rows, size) end)
     |> Enum.sum()
   end
 
-  defp distance({x1, y1}, {x2, y2}, empty_columns, empty_rows) do
+  defp distance({x1, y1}, {x2, y2}, empty_columns, empty_rows, size) do
     abs(x1 - x2) + abs(y1 - y2) +
-      Enum.count(x1..x2, &MapSet.member?(empty_columns, &1)) +
-      Enum.count(y1..y2, &MapSet.member?(empty_rows, &1))
+      Enum.count(x1..x2, &MapSet.member?(empty_columns, &1)) * (size - 1) +
+      Enum.count(y1..y2, &MapSet.member?(empty_rows, &1)) * (size - 1)
   end
 
   defp find_empty_columns(map) do
@@ -44,17 +56,6 @@ defmodule Advent.Day11 do
     all_rows = MapSet.new(0..Enum.max(filled_rows))
 
     MapSet.difference(all_rows, filled_rows)
-  end
-
-  @doc """
-  Part 2
-  """
-  @spec part_2(String.t()) :: integer
-  def part_2(input) do
-    input
-    |> parse()
-
-    0
   end
 
   defp parse(input) do
