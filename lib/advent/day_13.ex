@@ -15,35 +15,35 @@ defmodule Advent.Day13 do
   end
 
   defp summary(map) do
-    horizontal_mirror = map |> find_mirror() || 0
-    vertical_mirror = map |> transpose() |> find_mirror() || 0
+    horizontal_mirror = map |> find_mirror(nil) || 0
+    vertical_mirror = map |> transpose() |> find_mirror(nil) || 0
 
     vertical_mirror + 100 * horizontal_mirror
   end
 
-  defp transpose(map) do
-    map
-    |> Enum.zip()
-    |> Enum.map(&Tuple.to_list/1)
+  defp find_mirror([row | rows], exclude) do
+    find_mirror([row], rows, exclude)
   end
 
-  defp find_mirror([row | rows]) do
-    find_mirror([row], rows)
-  end
+  defp find_mirror(_, [], _exclude), do: nil
 
-  defp find_mirror(_, []), do: nil
-
-  defp find_mirror(left, right) do
+  defp find_mirror(left, right, exclude) do
     left
     |> Enum.zip(right)
     |> Enum.all?(fn {a, b} -> a == b end)
     |> case do
       true ->
-        length(left)
+        mirror = length(left)
+        if exclude == mirror do
+          [elem | right] = right
+          find_mirror([elem | left], right, exclude)
+        else
+          mirror
+        end
 
       false ->
         [elem | right] = right
-        find_mirror([elem | left], right)
+        find_mirror([elem | left], right, exclude)
     end
   end
 
@@ -54,8 +54,38 @@ defmodule Advent.Day13 do
   def part_2(input) do
     input
     |> parse()
+    |> Enum.map(&smudge_summary/1)
+    |> Enum.sum()
+  end
 
-    0
+  defp smudge_summary(map) do
+    original_horizontal_mirror = map |> find_mirror(nil)
+    original_vertical_mirror = map |> transpose() |> find_mirror(nil)
+
+    horizontal_mirror = map |> find_smudge_mirror(original_horizontal_mirror) || 0
+    vertical_mirror = map |> transpose() |> find_smudge_mirror(original_vertical_mirror) || 0
+
+    vertical_mirror + 100 * horizontal_mirror
+  end
+
+  defp find_smudge_mirror(map, original_mirror) do
+    for(y <- 0..(length(map) - 1), x <- 0..(length(hd(map)) - 1), do: {x, y})
+    |> Stream.map(fn {x, y} ->
+      List.update_at(map, y, fn row ->
+        List.update_at(row, x, fn
+          :ash -> :rocks
+          :rocks -> :ash
+        end)
+      end)
+    end)
+    |> Stream.map(fn [row | rows] -> find_mirror([row], rows, original_mirror) end)
+    |> Enum.find(& &1)
+  end
+
+  defp transpose(map) do
+    map
+    |> Enum.zip()
+    |> Enum.map(&Tuple.to_list/1)
   end
 
   defp parse(input) do
