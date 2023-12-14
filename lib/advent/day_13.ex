@@ -34,6 +34,7 @@ defmodule Advent.Day13 do
     |> case do
       true ->
         mirror = length(left)
+
         if exclude == mirror do
           [elem | right] = right
           find_mirror([elem | left], right, exclude)
