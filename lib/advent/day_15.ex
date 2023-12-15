@@ -9,9 +9,83 @@ defmodule Advent.Day15 do
   @spec part_1(String.t()) :: integer
   def part_1(input) do
     input
-    |> parse()
+    |> split()
     |> Enum.map(&hash/1)
     |> Enum.sum()
+  end
+
+  @doc """
+  Part 2
+  """
+  @spec part_2(String.t()) :: integer
+  def part_2(input) do
+    boxes = %{}
+
+    input
+    |> split()
+    |> Enum.map(&parse_instruction/1)
+    |> Enum.reduce(boxes, &apply_instruction/2)
+    |> Enum.flat_map(fn {box_number, lenses} ->
+      slots = length(lenses)
+
+      lenses
+      |> Enum.with_index()
+      |> Enum.map(fn {{_label, focal_length}, index} ->
+        [
+          box_number + 1,
+          slots - index,
+          focal_length
+        ]
+        |> Enum.reduce(&Kernel.*/2)
+      end)
+    end)
+    |> Enum.sum()
+  end
+
+  defp apply_instruction({:put, label, focal_length}, boxes) do
+    box_number = hash(label)
+
+    boxes
+    |> Map.update(box_number, [{label, focal_length}], fn lenses ->
+      lenses
+      |> Enum.find_index(fn {lens_label, _} -> lens_label == label end)
+      |> case do
+        nil ->
+          [{label, focal_length} | lenses]
+
+        index ->
+          List.update_at(lenses, index, fn {_, _} -> {label, focal_length} end)
+      end
+    end)
+  end
+
+  defp apply_instruction({:remove, label}, boxes) do
+    box_number = hash(label)
+
+    boxes
+    |> Map.update(box_number, [], fn lenses ->
+      lenses
+      |> Enum.find_index(fn {lens_label, _} -> lens_label == label end)
+      |> case do
+        nil ->
+          lenses
+
+        index ->
+          List.delete_at(lenses, index)
+      end
+    end)
+  end
+
+  defp parse_instruction(input) do
+    ~r/([a-z]+)([=\-])([1-9])?/
+    |> Regex.run(input, capture: :all_but_first)
+    |> case do
+      [label, "=", focal_length] ->
+        {:put, label, String.to_integer(focal_length)}
+
+      [label, "-"] ->
+        {:remove, label}
+    end
   end
 
   def hash(string) do
@@ -32,18 +106,7 @@ defmodule Advent.Day15 do
     |> hd()
   end
 
-  @doc """
-  Part 2
-  """
-  @spec part_2(String.t()) :: integer
-  def part_2(input) do
-    input
-    |> parse()
-
-    0
-  end
-
-  defp parse(input) do
+  defp split(input) do
     input
     |> String.trim()
     |> String.split(",", trim: true)
