@@ -8,9 +8,30 @@ defmodule Advent.Day16 do
   """
   @spec part_1(String.t()) :: integer
   def part_1(input) do
+    input
+    |> parse()
+    |> count_energized_fields({0, 0}, :east)
+  end
+
+  @doc """
+  Part 2
+  """
+  @spec part_2(String.t()) :: integer
+  def part_2(input) do
     map = input |> parse()
-    pos = {0, 0}
-    dir = :east
+
+    {max_x, max_y} = map |> Map.keys() |> Enum.max()
+
+    [
+      Enum.flat_map(0..max_x, fn x -> [{{x, 0}, :south}, {{x, max_y}, :north}] end),
+      Enum.flat_map(0..max_y, fn y -> [{{0, y}, :east}, {{max_x, y}, :west}] end),
+    ]
+    |> Stream.concat()
+    |> Enum.map(fn {pos, dir} -> count_energized_fields(map, pos, dir) end)
+    |> Enum.max()
+  end
+
+  def count_energized_fields(map, pos, dir) do
     seen = MapSet.new()
     worklist = [{pos, dir}]
 
@@ -33,13 +54,11 @@ defmodule Advent.Day16 do
           new_work =
             tile
             |> change_dir(dir)
-            |> Enum.map(fn new_dir ->
-              {move(new_dir, pos), new_dir}
-            end)
+            |> Enum.map(fn new_dir -> {move(new_dir, pos), new_dir} end)
 
-          worklist = new_work ++ worklist
-          seen = MapSet.put(seen, {pos, dir})
-          traverse(seen, worklist, map)
+          seen
+          |> MapSet.put({pos, dir})
+          |> traverse(new_work ++ worklist, map)
 
         :error ->
           traverse(seen, worklist, map)
@@ -69,17 +88,6 @@ defmodule Advent.Day16 do
   def move(:south, {x, y}), do: {x, y + 1}
   def move(:east, {x, y}), do: {x + 1, y}
   def move(:west, {x, y}), do: {x - 1, y}
-
-  @doc """
-  Part 2
-  """
-  @spec part_2(String.t()) :: integer
-  def part_2(input) do
-    input
-    |> parse()
-
-    0
-  end
 
   defp parse(input) do
     input
