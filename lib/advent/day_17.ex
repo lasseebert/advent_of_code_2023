@@ -19,25 +19,20 @@ defmodule Advent.Day17 do
   # of the limitations in movement. You can only move straight for 1-3 tiles, and
   # you can only turn left or right.
   defp a_star(map, start, target) do
-    # Optimally this should be a heap or a priority queue
-    # This would make the select-min happen in O(log n) instead of O(n)
-    open = MapSet.new([start])
+    open = PQueue2.new() |> PQueue2.put(start, h_score(start, target))
     g_score = %{start => 0}
 
     a_star_loop(map, open, g_score, target)
   end
 
   defp a_star_loop(map, open, g_score, target) do
-    current_node =
-      Enum.min_by(open, fn node -> Map.fetch!(g_score, node) + h_score(node, target) end)
+    {current_node, open} = PQueue2.pop(open)
 
     current_g_score = Map.fetch!(g_score, current_node)
 
     if current_node == target do
       current_g_score
     else
-      open = MapSet.delete(open, current_node)
-
       {open, g_score} =
         current_node
         |> neighbours(map, target)
@@ -49,7 +44,7 @@ defmodule Advent.Day17 do
               {open, g_score}
 
             _ ->
-              open = MapSet.put(open, neighbour)
+              open = PQueue2.put(open, neighbour, tentative_g_score + h_score(neighbour, target))
               g_score = Map.put(g_score, neighbour, tentative_g_score)
 
               {open, g_score}

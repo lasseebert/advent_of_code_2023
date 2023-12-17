@@ -24,7 +24,7 @@ defmodule Advent.Day16 do
 
     [
       Enum.flat_map(0..max_x, fn x -> [{{x, 0}, :south}, {{x, max_y}, :north}] end),
-      Enum.flat_map(0..max_y, fn y -> [{{0, y}, :east}, {{max_x, y}, :west}] end),
+      Enum.flat_map(0..max_y, fn y -> [{{0, y}, :east}, {{max_x, y}, :west}] end)
     ]
     |> Stream.concat()
     |> Enum.map(fn {pos, dir} -> count_energized_fields(map, pos, dir) end)
