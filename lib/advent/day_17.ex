@@ -9,67 +9,104 @@ defmodule Advent.Day17 do
   @spec part_1(String.t()) :: integer
   def part_1(input) do
     map = input |> parse()
-    current = {{0, 0}, {1, 0}, 0}
-    cost = 0
-    seen = %{}
     target = map |> Map.keys() |> Enum.max()
+    start = {{0, 0}, {1, 0}, 0}
 
-    seen = traverse(seen, map, current, cost)
-
-    seen
-    |> Enum.filter(fn {{pos, _, _}, _cost} -> pos == target end)
-    |> Enum.map(fn {_, cost} -> cost end)
-    |> Enum.min()
+    a_star(map, start, target)
   end
 
-  # This is a totally naive flood-fill algorithm.
-  # I should use A* if it's too slow.
-  # Update: It is too slow. Didn't finish after ~5 minutes :(
-  def traverse(seen, map, current, cost) do
-    case Map.fetch(seen, current) do
-      {:ok, seen_cost} when seen_cost <= cost ->
-        seen
+  # Note that each tile of the map is 12 nodes in the A* graph. This is because
+  # of the limitations in movement. You can only move straight for 1-3 tiles, and
+  # you can only turn left or right.
+  defp a_star(map, start, target) do
+    # Optimally this should be a heap or a priority queue
+    # This would make the select-min happen in O(log n) instead of O(n)
+    open = MapSet.new([start])
+    g_score = %{start => 0}
 
-      _ ->
-        seen = Map.put(seen, current, cost)
+    a_star_loop(map, open, g_score, target)
+  end
 
-        [
-          turn_left(current),
-          go_straight(current),
-          turn_right(current)
-        ]
-        |> Enum.filter(fn
-          {_, _, straight_count} when straight_count > 3 -> false
-          {pos, _, _} -> Map.has_key?(map, pos)
+  defp a_star_loop(map, open, g_score, target) do
+    current_node =
+      Enum.min_by(open, fn node -> Map.fetch!(g_score, node) + h_score(node, target) end)
+
+    current_g_score = Map.fetch!(g_score, current_node)
+
+    if current_node == target do
+      current_g_score
+    else
+      open = MapSet.delete(open, current_node)
+
+      {open, g_score} =
+        current_node
+        |> neighbours(map, target)
+        |> Enum.reduce({open, g_score}, fn neighbour, {open, g_score} ->
+          tentative_g_score = current_g_score + cost(neighbour, map)
+
+          case Map.fetch(g_score, neighbour) do
+            {:ok, seen_g_score} when seen_g_score <= tentative_g_score ->
+              {open, g_score}
+
+            _ ->
+              open = MapSet.put(open, neighbour)
+              g_score = Map.put(g_score, neighbour, tentative_g_score)
+
+              {open, g_score}
+          end
         end)
-        |> Enum.reduce(seen, fn {pos, _, _} = new_current, seen ->
-          move_cost = Map.fetch!(map, pos)
-          traverse(seen, map, new_current, cost + move_cost)
-        end)
+
+      a_star_loop(map, open, g_score, target)
     end
   end
 
-  def turn_left({pos, dir, _straight_count}) do
+  defp cost({pos, _, _}, map), do: Map.fetch!(map, pos)
+  defp cost({_, _} = pos, map), do: Map.fetch!(map, pos)
+
+  defp h_score({pos, _, _}, target), do: manhattan_distance(pos, target)
+  defp h_score({_, _} = pos, target), do: manhattan_distance(pos, target)
+
+  defp manhattan_distance({x1, y1}, {x2, y2}) do
+    abs(x1 - x2) + abs(y1 - y2)
+  end
+
+  defp neighbours(node, map, target) do
+    [
+      turn_left(node),
+      go_straight(node),
+      turn_right(node)
+    ]
+    |> Enum.filter(fn
+      {_, _, straight_count} when straight_count > 3 -> false
+      {pos, _, _} -> Map.has_key?(map, pos)
+    end)
+    |> Enum.map(fn
+      {pos, _, _} when pos == target -> pos
+      node -> node
+    end)
+  end
+
+  defp turn_left({pos, dir, _straight_count}) do
     new_dir = rotate_left(dir)
     new_pos = move(pos, new_dir)
     {new_pos, new_dir, 1}
   end
 
-  def turn_right({pos, dir, _straight_count}) do
+  defp turn_right({pos, dir, _straight_count}) do
     new_dir = rotate_right(dir)
     new_pos = move(pos, new_dir)
     {new_pos, new_dir, 1}
   end
 
-  def go_straight({pos, dir, straight_count}) do
+  defp go_straight({pos, dir, straight_count}) do
     new_pos = move(pos, dir)
     {new_pos, dir, straight_count + 1}
   end
 
-  def rotate_left({x, y}), do: {-y, x}
-  def rotate_right({x, y}), do: {y, -x}
+  defp rotate_left({x, y}), do: {-y, x}
+  defp rotate_right({x, y}), do: {y, -x}
 
-  def move({x, y}, {dx, dy}) do
+  defp move({x, y}, {dx, dy}) do
     {x + dx, y + dy}
   end
 
