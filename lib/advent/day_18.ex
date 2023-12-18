@@ -10,96 +10,83 @@ defmodule Advent.Day18 do
   def part_1(input) do
     input
     |> parse()
-    |> find_edges()
+    |> Enum.map(&elem(&1, 0))
+    |> find_coords()
     |> find_area()
-    |> Enum.count()
   end
 
-  defp find_area(edges) do
-    all_coords = edges |> Enum.flat_map(fn {c1, c2} -> [c1, c2] end) |> Enum.uniq()
+  @doc """
+  Part 2
+  """
+  @spec part_2(String.t()) :: integer
+  def part_2(input) do
+    input
+    |> parse()
+    |> Enum.map(&elem(&1, 1))
+    |> find_coords()
+    |> find_area()
+  end
 
-    {min_x, max_x} = all_coords |> Enum.map(fn {x, _y} -> x end) |> Enum.min_max()
-    {min_y, max_y} = all_coords |> Enum.map(fn {_x, y} -> y end) |> Enum.min_max()
+  defp find_area(coords) do
+    n = length(coords)
 
-    vertical_edges =
+    edges =
+      coords
+      |> Stream.cycle()
+      |> Stream.chunk_every(2, 1, :discard)
+      |> Stream.map(fn [c1, c2] -> {dir(c1, c2), {c1, c2}} end)
+      |> Enum.take(n)
+
+    corners =
       edges
-      |> Enum.filter(fn {{x1, _y1}, {x2, _y2}} -> x1 == x2 end)
+      |> Stream.cycle()
+      |> Stream.chunk_every(3, 1, :discard)
+      |> Enum.take(n)
 
-    # Add all edges to the map
-    map =
-      edges
-      |> Enum.reduce(MapSet.new(), fn {c1, c2}, map ->
-        [{x1, y1}, {x2, y2}] = Enum.sort([c1, c2])
-
-        for(x <- x1..x2, y <- y1..y2, do: {x, y})
-        |> Enum.reduce(map, &MapSet.put(&2, &1))
-      end)
-
-    # Add the inner area using the scan line algorith
-    Enum.reduce(min_y..max_y, map, fn y, map ->
-      scan_line(map, y, min_x, max_x, vertical_edges)
+    corners
+    # This finds the outside path of the polygon
+    |> Enum.map(fn [{dir_before, _}, {dir, {{x1, y1}, {x2, y2}}}, {dir_after, _}] ->
+      case {dir_before, dir, dir_after} do
+        {:left, :up, :left} -> {x1, y1, x2, y2}
+        {:left, :up, :right} -> {x1, y1, x2, y2 + 1}
+        {:right, :up, :left} -> {x1, y1 + 1, x2, y2}
+        {:right, :up, :right} -> {x1, y1 + 1, x2, y2 + 1}
+        {:left, :down, :left} -> {x1 + 1, y1, x2 + 1, y2}
+        {:left, :down, :right} -> {x1 + 1, y1, x2 + 1, y2 + 1}
+        {:right, :down, :left} -> {x1 + 1, y1 + 1, x2 + 1, y2}
+        {:right, :down, :right} -> {x1 + 1, y1 + 1, x2 + 1, y2 + 1}
+        {:up, :left, :up} -> {x1, y1, x2, y2}
+        {:up, :left, :down} -> {x1, y1, x2 + 1, y2}
+        {:down, :left, :up} -> {x1 + 1, y1, x2, y2}
+        {:down, :left, :down} -> {x1 + 1, y1, x2 + 1, y2}
+        {:up, :right, :up} -> {x1, y1 + 1, x2, y2 + 1}
+        {:up, :right, :down} -> {x1, y1 + 1, x2 + 1, y2 + 1}
+        {:down, :right, :up} -> {x1 + 1, y1 + 1, x2, y2 + 1}
+        {:down, :right, :down} -> {x1 + 1, y1 + 1, x2 + 1, y2 + 1}
+      end
     end)
+    # Use the shoelace formula to find the area of the polygon
+    |> Enum.map(fn {x1, y1, x2, y2} -> x1 * y2 - x2 * y1 end)
+    |> Enum.sum()
+    |> abs()
+    |> div(2)
   end
 
-  defp scan_line(map, y, min_x, max_x, edges) do
-    min_x..max_x
-    |> Enum.reduce({map, 0}, fn x, {map, parity} ->
-      coord = {x, y}
-
-      parity =
-        edges
-        |> Enum.filter(fn {{x1, y1}, {x1, y2}} -> x1 == x and ((y1 <= y and y <= y2) or (y2 <= y and y <= y1)) end)
-        |> case do
-          [] ->
-            # No edge intersection
-            parity
-
-          [{{^x, y1}, {^x, y2}}] ->
-            cond do
-              # Edge intersects in min value. This is ignored, because we need
-              # to either ignore the min or max value of each edge, otherwise
-              # it would not work when we hit a horizontal edge.
-              #
-              # E.g.
-              #
-              #     #
-              #     #
-              #     ####
-              #        #
-              #        #
-              #
-              # Here we only want one hit, and:
-              #
-              #     #   #
-              #     #   #
-              #     #####
-              #
-              # Here we want 0 or 2 hits
-              Enum.min([y1, y2]) == y -> parity
-              y1 > y2 -> parity + 1
-              y1 < y2 -> parity - 1
-            end
-        end
-
-      map =
-        if parity != 0 do
-          # When parity is non-zero we are inside the polygon
-          MapSet.put(map, coord)
-        else
-          map
-        end
-
-      {map, parity}
-    end)
-    |> then(fn {map, 0} -> map end)
+  defp dir({x1, y1}, {x2, y2}) do
+    cond do
+      x1 == x2 and y1 < y2 -> :up
+      x1 == x2 and y1 > y2 -> :down
+      x1 < x2 and y1 == y2 -> :right
+      x1 > x2 and y1 == y2 -> :left
+    end
   end
 
-  defp find_edges(instructions) do
+  defp find_coords(instructions) do
     {edges, {0, 0}} =
       instructions
-      |> Enum.map_reduce({0, 0}, fn {dir, steps, _color}, coord ->
+      |> Enum.map_reduce({0, 0}, fn {dir, steps}, coord ->
         new_coord = move(coord, dir, steps)
-        {{coord, new_coord}, new_coord}
+        {new_coord, new_coord}
       end)
 
     edges
@@ -110,17 +97,6 @@ defmodule Advent.Day18 do
   defp move({x, y}, :left, steps), do: {x - steps, y}
   defp move({x, y}, :right, steps), do: {x + steps, y}
 
-  @doc """
-  Part 2
-  """
-  @spec part_2(String.t()) :: integer
-  def part_2(input) do
-    input
-    |> parse()
-
-    0
-  end
-
   defp parse(input) do
     input
     |> String.trim()
@@ -129,9 +105,9 @@ defmodule Advent.Day18 do
   end
 
   defp parse_line(line) do
-    ~r/^([UDRL]) (\d+) \((#[0-9a-f]{6})\)$/
+    ~r/^([UDRL]) (\d+) \(#([0-9a-f]{5})([0-3])\)$/
     |> Regex.run(line, capture: :all_but_first)
-    |> then(fn [dir, steps, color] ->
+    |> then(fn [dir, steps, hex_steps, hex_dir] ->
       dir =
         case dir do
           "U" -> :up
@@ -140,9 +116,18 @@ defmodule Advent.Day18 do
           "R" -> :right
         end
 
-      steps = String.to_integer(steps)
+      hex_dir =
+        case hex_dir do
+          "0" -> :right
+          "1" -> :down
+          "2" -> :left
+          "3" -> :up
+        end
 
-      {dir, steps, color}
+      steps = String.to_integer(steps)
+      hex_steps = String.to_integer(hex_steps, 16)
+
+      {{dir, steps}, {hex_dir, hex_steps}}
     end)
   end
 end
