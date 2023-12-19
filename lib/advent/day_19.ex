@@ -49,10 +49,89 @@ defmodule Advent.Day19 do
   """
   @spec part_2(String.t()) :: integer
   def part_2(input) do
-    input
-    |> parse()
+    {workflows, _parts} = input |> parse()
 
-    0
+    parts = [{%{x: 1..4000, m: 1..4000, a: 1..4000, s: 1..4000}, {"in", 0}}]
+    accepted_parts = []
+
+    parts
+    |> find_accepted(workflows, accepted_parts)
+    |> Enum.map(&part_combinations/1)
+    |> Enum.sum()
+  end
+
+  defp part_combinations(part) do
+    part
+    |> Map.values()
+    |> Enum.map(&Enum.count/1)
+    |> Enum.product()
+  end
+
+  defp find_accepted([], _workflows, accepted_parts), do: accepted_parts
+
+  defp find_accepted([{part, {workflow_name, rule_index}} | parts], workflows, accepted_parts) do
+    {expression, target} = workflows |> Map.fetch!(workflow_name) |> Enum.at(rule_index)
+
+    {parts, accepted_parts} =
+      part
+      |> split_by_expression(expression)
+      |> then(fn [pass, fail] ->
+        # Add passed part of part to parts or accepted_parts
+        {parts, accepted_parts} =
+          if part_combinations(pass) > 0 do
+            case target do
+              :accept -> {parts, [pass | accepted_parts]}
+              :reject -> {parts, accepted_parts}
+              {:workflow, name} -> {[{pass, {name, 0}} | parts], accepted_parts}
+            end
+          else
+            {parts, accepted_parts}
+          end
+
+        # Retry failed part of part with next rule in same workflow
+        parts =
+          if part_combinations(fail) > 0 do
+            [{fail, {workflow_name, rule_index + 1}} | parts]
+          else
+            parts
+          end
+
+        {parts, accepted_parts}
+      end)
+
+    find_accepted(parts, workflows, accepted_parts)
+  end
+
+  # Split a part range into passed and failed part ranges based on the expression
+  defp split_by_expression(part, {op, {var, value}}) do
+    {pass, fail} =
+      part
+      |> Map.fetch!(var)
+      |> split_range(op, value)
+
+    [
+      Map.merge(part, %{var => pass}),
+      Map.merge(part, %{var => fail})
+    ]
+  end
+
+  defp split_by_expression(part, true) do
+    [
+      part,
+      # This just means an empty part range
+      Map.put(part, :x, 1..0//1)
+    ]
+  end
+
+  # Split a numeric range into two parts based on a comparison operator and a value
+  defp split_range(%{first: first} = range, :lt, value) do
+    Range.split(range, Enum.max([value - first, 0]))
+  end
+
+  defp split_range(range, :gt, value) do
+    range
+    |> split_range(:lt, value + 1)
+    |> then(fn {fail, pass} -> {pass, fail} end)
   end
 
   defp parse(input) do
