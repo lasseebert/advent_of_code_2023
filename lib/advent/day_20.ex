@@ -10,7 +10,7 @@ defmodule Advent.Day20 do
   def part_1(input) do
     modules = input |> parse()
     states = init_state(modules)
-    sent = %{low: 0, high: 0}
+    sent = %{}
 
     {_states, sent} =
       1..1000
@@ -20,7 +20,110 @@ defmodule Advent.Day20 do
 
     sent
     |> Map.values()
+    |> Enum.reduce(fn counts_1, counts_2 ->
+      Map.merge(counts_1, counts_2, fn _, count_1, count_2 -> count_1 + count_2 end)
+    end)
+    |> Map.values()
     |> Enum.product()
+  end
+
+  @doc """
+  Part 2
+
+  Layer 2
+  &cl -> rx
+
+  Layer 3
+  &js -> cl
+  &qs -> cl
+  &dt -> cl
+  &ts -> cl
+
+  * we need rx to be low
+  * So cl should receive all high signals
+  * So all js, qs, dt, ts (which only have one input each) should receive low signals
+  """
+  @spec part_2(String.t()) :: integer
+  def part_2(input) do
+    modules = input |> parse()
+    states = init_state(modules)
+
+    layer_1 = ["rx"]
+    layer_2 = layer_1 |> Enum.flat_map(&children(&1, modules))
+    layer_3 = layer_2 |> Enum.flat_map(&children(&1, modules))
+
+    states
+    |> Stream.unfold(fn states ->
+      {states, sent} = run([{:button, :broadcaster, :low}], states, %{}, modules)
+      {{states, sent}, states}
+    end)
+    |> Stream.with_index()
+    |> Enum.reduce_while(%{}, fn {{_states, sent}, index}, cycles ->
+      cycles =
+        Enum.reduce(layer_3, cycles, fn name, cycles ->
+          sent_low = Map.get(sent, name, %{}) |> Map.get(:low, 0) > 0
+
+          if sent_low do
+            Map.update(cycles, name, [index], fn
+              [prev_index] -> [prev_index, index]
+              [i1, i2] -> [i1, i2]
+            end)
+          else
+            cycles
+          end
+        end)
+
+      # We're done when we hit low for all layer 3 nodes twice
+      if Enum.count(cycles) == length(layer_3) and
+           cycles |> Map.values() |> Enum.all?(fn indices -> length(indices) == 2 end) do
+        {:halt, cycles}
+      else
+        {:cont, cycles}
+      end
+    end)
+    |> Enum.map(fn {_name, [i1, i2]} -> {i1, i2 - i1} end)
+    |> Enum.reduce(&combine_cycles/2)
+    |> then(fn {_offset, length} -> length end)
+  end
+
+  # Combines two cycles into a single cycle
+  # Stolen from https://math.stackexchange.com/a/3864593
+  defp combine_cycles({offset_1, length_1}, {offset_2, length_2}) do
+    {gcd, s, _t} = extended_gcd(length_1, length_2)
+    offset_diff = offset_1 - offset_2
+
+    pd_mult = div(offset_diff, gcd)
+    pd_remainder = rem(offset_diff, gcd)
+
+    if pd_remainder != 0 do
+      raise "Cycles never synchronize"
+    end
+
+    combined_length = div(length_1, gcd) * length_2
+    combined_offset = rem(offset_1 - s * pd_mult * length_1, combined_length)
+
+    {combined_offset, combined_length}
+  end
+
+  # Extended Euclidean algorithm
+  # Returns:
+  #   d = gcd(a, b)
+  #   s and t so that gcd(a, b) = sa + tb
+  defp extended_gcd(a, b) do
+    case b do
+      0 ->
+        {a, 1, 0}
+
+      _ ->
+        {d, s, t} = extended_gcd(b, rem(a, b))
+        {d, t, s - div(a, b) * t}
+    end
+  end
+
+  defp children(name, modules) do
+    modules
+    |> Enum.filter(fn {_, {_, outputs}} -> Enum.member?(outputs, name) end)
+    |> Enum.map(fn {child_name, _} -> child_name end)
   end
 
   defp run([], states, sent, _modules) do
@@ -33,7 +136,10 @@ defmodule Advent.Day20 do
   end
 
   defp process_signal(signal, sender, receiver, states, sent, modules) do
-    sent = Map.update!(sent, signal, &(&1 + 1))
+    sent =
+      Map.update(sent, receiver, %{signal => 1}, fn map ->
+        Map.update(map, signal, 1, &(&1 + 1))
+      end)
 
     with {:ok, state} <- Map.fetch(states, receiver),
          {type, outputs} <- Map.fetch!(modules, receiver) do
@@ -100,17 +206,6 @@ defmodule Advent.Day20 do
       end
     end)
     |> Enum.into(%{})
-  end
-
-  @doc """
-  Part 2
-  """
-  @spec part_2(String.t()) :: integer
-  def part_2(input) do
-    input
-    |> parse()
-
-    0
   end
 
   defp parse(input) do
