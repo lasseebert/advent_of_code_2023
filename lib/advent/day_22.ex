@@ -12,6 +12,7 @@ defmodule Advent.Day22 do
       input
       |> parse()
       |> Enum.sort_by(fn {{_x, _y, z}, _} -> z end)
+      |> Enum.with_index()
       |> drop_bricks([])
 
     Enum.count(bricks, fn brick ->
@@ -21,8 +22,38 @@ defmodule Advent.Day22 do
     end)
   end
 
+  @doc """
+  Part 2
+  """
+  @spec part_2(String.t()) :: integer
+  def part_2(input) do
+    # This whole thing has a bad complexity, but it works.
+    # Running time is 3-4 seconds for each part.
+    #
+    # I think the complexity is O(n^3)
+    bricks =
+      input
+      |> parse()
+      |> Enum.sort_by(fn {{_x, _y, z}, _} -> z end)
+      |> Enum.with_index()
+      |> drop_bricks([])
+
+    bricks
+    |> Enum.map(fn brick ->
+      new_bricks = List.delete(bricks, brick)
+      new_bricks_dropped = drop_bricks(new_bricks, [])
+
+      new_bricks
+      |> MapSet.new()
+      |> MapSet.intersection(MapSet.new(new_bricks_dropped))
+      |> Enum.count()
+      |> then(&(length(new_bricks) - &1))
+    end)
+    |> Enum.sum()
+  end
+
   defp drop_bricks([], dropped), do: Enum.reverse(dropped)
-  defp drop_bricks([{{_, _, 1}, _} = brick | bricks], dropped), do: drop_bricks(bricks, [brick | dropped])
+  defp drop_bricks([{{{_, _, 1}, _}, _label} = brick | bricks], dropped), do: drop_bricks(bricks, [brick | dropped])
 
   defp drop_bricks([brick | bricks], dropped) do
     new_brick = brick |> move_down()
@@ -34,27 +65,16 @@ defmodule Advent.Day22 do
     end
   end
 
-  defp move_down({{x1, y1, z1}, {x2, y2, z2}}) do
-    {{x1, y1, z1 - 1}, {x2, y2, z2 - 1}}
+  defp move_down({{{x1, y1, z1}, {x2, y2, z2}}, label}) do
+    {{{x1, y1, z1 - 1}, {x2, y2, z2 - 1}}, label}
   end
 
-  defp overlap?({{x1, y1, z1}, {x2, y2, z2}}, {{x3, y3, z3}, {x4, y4, z4}}) do
+  defp overlap?({{{x1, y1, z1}, {x2, y2, z2}}, _}, {{{x3, y3, z3}, {x4, y4, z4}}, _}) do
     x_overlap = x1 <= x4 && x2 >= x3
     y_overlap = y1 <= y4 && y2 >= y3
     z_overlap = z1 <= z4 && z2 >= z3
 
     x_overlap && y_overlap && z_overlap
-  end
-
-  @doc """
-  Part 2
-  """
-  @spec part_2(String.t()) :: integer
-  def part_2(input) do
-    input
-    |> parse()
-
-    0
   end
 
   defp parse(input) do
