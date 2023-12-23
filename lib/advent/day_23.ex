@@ -10,8 +10,19 @@ defmodule Advent.Day23 do
   """
   @spec part_1(String.t()) :: integer
   def part_1(input) do
-    map = input |> parse()
+    solve(input)
+  end
 
+  @doc """
+  Part 2
+  """
+  @spec part_2(String.t()) :: integer
+  def part_2(input) do
+    input |> String.replace(~r/[<>v^]/, ".") |> solve()
+  end
+
+  defp solve(input) do
+    map = input |> parse()
     {source, target} = find_source_and_target(map)
 
     map
@@ -28,6 +39,7 @@ defmodule Advent.Day23 do
     longest_path_loop(graph, node, target, distance, visited)
   end
 
+  # This try-all algorithm is slow for part 2
   defp longest_path_loop(_graph, node, target, distance, _visited) when node == target, do: distance
 
   defp longest_path_loop(graph, node, target, distance, visited) do
@@ -37,7 +49,10 @@ defmodule Advent.Day23 do
     |> Enum.map(fn {neighbour, weight} ->
       longest_path_loop(graph, neighbour, target, distance + weight, MapSet.put(visited, neighbour))
     end)
-    |> Enum.max()
+    |> case do
+      [] -> 0
+      results -> Enum.max(results)
+    end
   end
 
   defp find_source_and_target(map) do
@@ -85,17 +100,6 @@ defmodule Advent.Day23 do
       {x, y + 1}
     ]
     |> Enum.filter(&(Map.get(map, &1, :wall) != :wall))
-  end
-
-  @doc """
-  Part 2
-  """
-  @spec part_2(String.t()) :: integer
-  def part_2(input) do
-    input
-    |> parse()
-
-    0
   end
 
   defp parse(input) do
